@@ -1,0 +1,17 @@
+{
+    "type": "function", 
+    "function": {
+        "name": "TU FUNCION", 
+        "description": "DESCRIPCION CLARA DE LA FUNCION",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "UN PARAMETRO": {
+                    "type": "TIPO DE DATO DEL PARAMETRO",
+                    "description": "DESCRIPCION CLARA DEL PARAMETRO"
+                }
+            },
+            "required": ["CUALES PARAMETROS SON OBLIGATORIOS"]
+        }
+    }
+}

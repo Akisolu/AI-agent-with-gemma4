@@ -1,42 +1,41 @@
-from openai import OpenAI
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY")
-)
+import ollama
+from timer import timer
 
 # Memoria del chat (incluye el system prompt)
 memoria = [
     {
         "role": "system", 
         "content": "Eres un asistente excelente hablando español y te especializas en dar respuestas cortas pero precisas"
+    },
+    {
+        "role": "system", 
+        "content": "Te ejecutas en hardware no muy potente para estandares modernos, prioriza la velocidad sobre precision, a menos que se te indique lo contrario"
     }
 ]
 
 salida = ("salir", "exit", "quit", "bye")
 
+@timer
 def chat(mensaje):
     """Envía un mensaje manteniendo el contexto de la conversación."""
     
-    # Agregamos el mensaje del usuario a la memoria
+    # Agregamos el mensaje del usuario
     memoria.append({"role": "user", "content": mensaje})
     
     try:
-        response = client.chat.completions.create(
-            model="openrouter/free",
-            messages=memoria,  
-            temperature=0.7,
+        response = ollama.chat(
+            model="gemma4:e2b",  # ← Tu modelo 
+            messages=memoria,
+            options={
+                "temperature": 0.7,
+            }
         )
-
-        respuesta = response.choices[0].message.content
         
-        # Agregamos la respuesta del asistente a la memoria
+        respuesta = response["message"]["content"]
+        
+        # Agregamos la respuesta del asistente
         memoria.append({"role": "assistant", "content": respuesta})
-
+        
         return respuesta
         
     except Exception as e:
@@ -49,7 +48,7 @@ if __name__ == "__main__":
     while True:
         user_input = input("Tu: ").strip()
 
-        if not user_input:  # ← Mejor que 'is None' (input nunca devuelve None)
+        if not user_input:
             continue
 
         if user_input.lower() in salida:

@@ -1,5 +1,6 @@
 """
 chat.py - Maneja la comunicacion con Ollama y el ciclo de tools.
+Soporta multiples tools en una misma solicitud.
 """
 
 import ollama
@@ -42,61 +43,56 @@ def ejecutar_tool(tool_call):
 
 @timer
 def chat(mensaje):
-    """Envia mensaje al modelo, maneja tools si las pide."""
+    """Envia mensaje al modelo, maneja tools si las pide.
+    Soporta multiples tools en una sola solicitud."""
     memoria.append({"role": "user", "content": mensaje})
 
-    # --- Primera llamada: el modelo decide si usa tools ---
-    respuesta = ollama.chat(
-        model="gemma4:e2b",
-        messages=memoria,
-        tools=TOOLS_SCHEMA,
-        options={"temperature": 1.0, "top_p": 0.95, "top_k": 64}
-    )
+    # --- BUCLE PRINCIPAL: permite multiples rondas de tools ---
+    while True:
+        respuesta = ollama.chat(
+            model="gemma4:e2b",
+            messages=memoria,
+            tools=TOOLS_SCHEMA,
+            options={"temperature": 1.0, "top_p": 0.95, "top_k": 64}
+        )
 
-    mensaje_modelo = respuesta["message"]
-    
-    # Maneja None correctamente
-    tool_calls = mensaje_modelo.get("tool_calls") or []
-    if not isinstance(tool_calls, list):
-        tool_calls = []
+        mensaje_modelo = respuesta["message"]
+        
+        # Maneja None correctamente
+        tool_calls = mensaje_modelo.get("tool_calls") or []
+        if not isinstance(tool_calls, list):
+            tool_calls = []
 
-    # --- Si no pidio tools, responde directamente ---
-    if not tool_calls:
-        texto = mensaje_modelo.get("content", "")
-        memoria.append({"role": "assistant", "content": texto})
-        print(f"\nRespuesta:\n{texto}\n")
-        return texto
+        # --- Si no pidio tools, responde directamente ---
+        if not tool_calls:
+            texto = mensaje_modelo.get("content", "")
+            memoria.append({"role": "assistant", "content": texto})
+            print(f"\nRespuesta:\n{texto}\n")
+            return texto
 
-    # --- El modelo pidio tools: ejecutarlas ---
-    print(f"   El modelo quiere usar {len(tool_calls)} herramienta(s)")
+        # --- El modelo pidio tools: ejecutarlas TODAS ---
+        print(f"   El modelo quiere usar {len(tool_calls)} herramienta(s)")
 
-    # Guardamos la respuesta del asistente (con tool_calls)
-    memoria.append({
-        "role": "assistant",
-        "content": mensaje_modelo.get("content", ""),
-        "tool_calls": tool_calls
-    })
-
-    # Ejecutamos cada tool y guardamos el resultado
-    for tool_call in tool_calls:
-        resultado = ejecutar_tool(tool_call)
+        # Guardamos la respuesta del asistente (con tool_calls)
         memoria.append({
-            "role": "tool",
-            "content": resultado,
-            "name": tool_call["function"]["name"]
+            "role": "assistant",
+            "content": mensaje_modelo.get("content", ""),
+            "tool_calls": tool_calls
         })
 
-    # --- Segunda llamada: el modelo genera respuesta final ---
-    respuesta_final = ollama.chat(
-        model="gemma4:e2b",
-        messages=memoria,
-        options={"temperature": 1.0, "top_p": 0.95, "top_k": 64}
-    )
+        # Ejecutamos TODAS las tools y guardamos los resultados
+        for tool_call in tool_calls:
+            resultado = ejecutar_tool(tool_call)
+            memoria.append({
+                "role": "tool",
+                "content": resultado,
+                "name": tool_call["function"]["name"]
+            })
 
-    texto_final = respuesta_final["message"].get("content", "")
-    memoria.append({"role": "assistant", "content": texto_final})
-    print(f"\nRespuesta:\n{texto_final}\n")
-    return texto_final
+        # --- El bucle vuelve al inicio ---
+        # El modelo recibe todos los resultados y decide:
+        #   a) Pedir mas tools (otra iteracion del bucle)
+        #   b) Dar la respuesta final (sale del bucle)
 
 
 def guardar_sesion(nombre=None, metadata=None):
@@ -118,3 +114,5 @@ def cargar_sesion(nombre_archivo):
     nueva_memoria = cargar_memoria(nombre_archivo)
     if nueva_memoria:
         memoria = nueva_memoria
+        return True
+    return False

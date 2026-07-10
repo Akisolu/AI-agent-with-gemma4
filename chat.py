@@ -1,17 +1,18 @@
 """
-chat.py - Maneja la comunicación con Ollama y el ciclo de tools.
+chat.py - Maneja la comunicacion con Ollama y el ciclo de tools.
 """
 
 import ollama
 from tools import AVAILABLE_TOOLS, TOOLS_SCHEMA
 from timer import timer
+from memory import cristalizar
 
 
-# Memoria de la conversación
+# Memoria de la conversacion
 memoria = [
     {
         "role": "system",
-        "content": "Eres un asistente útil. Tienes acceso a herramientas. Cuando el usuario lo pida, úsalas."
+        "content": "Eres un asistente util. Tienes acceso a herramientas. Cuando el usuario lo pida, usalas."
     },
     {
         "role": "system", 
@@ -41,7 +42,7 @@ def ejecutar_tool(tool_call):
 
 @timer
 def chat(mensaje):
-    """Envía mensaje al modelo, maneja tools si las pide."""
+    """Envia mensaje al modelo, maneja tools si las pide."""
     memoria.append({"role": "user", "content": mensaje})
 
     # --- Primera llamada: el modelo decide si usa tools ---
@@ -54,19 +55,19 @@ def chat(mensaje):
 
     mensaje_modelo = respuesta["message"]
     
-    #   CORREGIDO: maneja None correctamente
+    # Maneja None correctamente
     tool_calls = mensaje_modelo.get("tool_calls") or []
     if not isinstance(tool_calls, list):
         tool_calls = []
 
-    # --- Si no pidió tools, responde directamente ---
+    # --- Si no pidio tools, responde directamente ---
     if not tool_calls:
         texto = mensaje_modelo.get("content", "")
         memoria.append({"role": "assistant", "content": texto})
         print(f"\nRespuesta:\n{texto}\n")
-        return texto 
+        return texto
 
-    # --- El modelo pidió tools: ejecutarlas ---
+    # --- El modelo pidio tools: ejecutarlas ---
     print(f"   El modelo quiere usar {len(tool_calls)} herramienta(s)")
 
     # Guardamos la respuesta del asistente (con tool_calls)
@@ -94,5 +95,26 @@ def chat(mensaje):
 
     texto_final = respuesta_final["message"].get("content", "")
     memoria.append({"role": "assistant", "content": texto_final})
-    print(f"\n🤖 Respuesta:\n{texto_final}\n")
+    print(f"\nRespuesta:\n{texto_final}\n")
     return texto_final
+
+
+def guardar_sesion(nombre=None, metadata=None):
+    """
+    Cristaliza (guarda) la memoria actual en un archivo JSON.
+    
+    Args:
+        nombre: Nombre personalizado (opcional)
+        metadata: Info extra, ej: {"tema": "proyecto X"}
+    """
+    return cristalizar(memoria, nombre=nombre, metadata=metadata)
+
+
+def cargar_sesion(nombre_archivo):
+    """Carga una memoria guardada y la establece como memoria actual."""
+    global memoria
+    from memory import cargar_memoria
+    
+    nueva_memoria = cargar_memoria(nombre_archivo)
+    if nueva_memoria:
+        memoria = nueva_memoria

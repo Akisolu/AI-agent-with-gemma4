@@ -9,7 +9,7 @@ import os
 
 def list_files(directory="."):
     """Lista los archivos y carpetas dentro de un directorio."""
-    print("   🔧 Herramienta llamada: list_files")
+    print("   Herramienta llamada: list_files")
     try:
         files = os.listdir(directory)
         return {"files": files, "count": len(files)}
@@ -19,7 +19,7 @@ def list_files(directory="."):
 
 def get_current_time():
     """Obtiene la fecha y hora actual."""
-    print("   🔧 Herramienta llamada: get_current_time")
+    print("   Herramienta llamada: get_current_time")
     from datetime import datetime
     now = datetime.now()
     return {
@@ -39,7 +39,7 @@ def leer_fichero(fichero):
     Returns:
         Contenido del archivo como string, o mensaje de error
     """
-    print("   🔧 Herramienta llamada: leer_fichero")
+    print("   Herramienta llamada: leer_fichero")
     
     if not os.path.exists(fichero):
         return f"Error: El archivo '{fichero}' no existe."
@@ -49,7 +49,7 @@ def leer_fichero(fichero):
     
     extensiones_validas = (".txt", ".py", ".md", ".json", ".csv", ".log", ".yaml", ".yml", ".html", ".css", ".js")
     if not fichero.lower().endswith(extensiones_validas):
-        return f"Advertencia: '{fichero}' no parece un archivo de texto. Usa con precaución."
+        return f"Advertencia: '{fichero}' no parece un archivo de texto. Usa con precaucion."
     
     try:
         with open(fichero, "r", encoding="utf-8") as archivo:
@@ -61,29 +61,76 @@ def leer_fichero(fichero):
                     f"El archivo es muy grande ({len(contenido)} caracteres). "
                     f"Mostrando los primeros {max_caracteres} caracteres:\n\n"
                     f"{contenido[:max_caracteres]}\n\n"
-                    f"[... archivo truncado ...]"
+                    "[... archivo truncado ...]"
                 )
             
             return contenido
             
     except UnicodeDecodeError:
-        return f"Error: '{fichero}' no es un archivo de texto válido."
+        return f"Error: '{fichero}' no es un archivo de texto valido."
     except PermissionError:
         return f"Error: Sin permisos para leer '{fichero}'."
     except Exception as e:
         return f"Error inesperado: {str(e)}"
 
 
-# ========== MAPEO: nombre de función → función real ==========
+def escribir_fichero(fichero, contenido, modo="sobrescribir"):
+    """
+    Escribe contenido en un archivo de texto plano.
+    
+    Args:
+        fichero: Ruta del archivo a crear o modificar
+        contenido: Texto a escribir en el archivo
+        modo: "sobrescribir" (default) o "agregar" al final del archivo
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: escribir_fichero")
+    
+    # Validar modo
+    if modo not in ("sobrescribir", "agregar"):
+        return f"Error: modo '{modo}' no valido. Usa 'sobrescribir' o 'agregar'."
+    
+    # Verificar que no sea una carpeta
+    if os.path.isdir(fichero):
+        return f"Error: '{fichero}' es una carpeta, no se puede escribir."
+    
+    # Crear directorios intermedios si no existen
+    directorio = os.path.dirname(fichero)
+    if directorio and not os.path.exists(directorio):
+        try:
+            os.makedirs(directorio)
+        except Exception as e:
+            return f"Error al crear directorios: {str(e)}"
+    
+    # Determinar modo de apertura
+    modo_archivo = "a" if modo == "agregar" else "w"
+    
+    try:
+        with open(fichero, modo_archivo, encoding="utf-8") as archivo:
+            archivo.write(contenido)
+        
+        accion = "agregado a" if modo == "agregar" else "escrito en"
+        return f"Exito: Contenido {accion} '{fichero}' ({len(contenido)} caracteres)."
+        
+    except PermissionError:
+        return f"Error: Sin permisos para escribir en '{fichero}'."
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
+
+
+# ========== MAPEO: nombre de funcion → funcion real ==========
 
 AVAILABLE_TOOLS = {
     "list_files": list_files,
     "get_current_time": get_current_time,
     "leer_fichero": leer_fichero,
+    "escribir_fichero": escribir_fichero,
 }
 
 
-# ========== DEFINICIÓN DE TOOLS PARA EL MODELO (JSON Schema) ==========
+# ========== DEFINICION DE TOOLS PARA EL MODELO (JSON Schema) ==========
 
 TOOLS_SCHEMA = [
     {
@@ -129,6 +176,32 @@ TOOLS_SCHEMA = [
                     }
                 },
                 "required": ["fichero"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "escribir_fichero",
+            "description": "Escribe o agrega texto a un archivo de texto plano. Crea el archivo y directorios si no existen.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fichero": {
+                        "type": "string",
+                        "description": "Ruta del archivo a crear o modificar. Ejemplos: 'notas.txt', './docs/resumen.md'"
+                    },
+                    "contenido": {
+                        "type": "string",
+                        "description": "Texto que se escribira en el archivo."
+                    },
+                    "modo": {
+                        "type": "string",
+                        "enum": ["sobrescribir", "agregar"],
+                        "description": "'sobrescribir' reemplaza el contenido existente. 'agregar' anade al final."
+                    }
+                },
+                "required": ["fichero", "contenido"]
             }
         }
     }

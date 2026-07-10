@@ -54,7 +54,7 @@ def chat(mensaje):
 
     mensaje_modelo = respuesta["message"]
     
-    # ✅ CORREGIDO: maneja None correctamente
+    #   CORREGIDO: maneja None correctamente
     tool_calls = mensaje_modelo.get("tool_calls") or []
     if not isinstance(tool_calls, list):
         tool_calls = []
@@ -63,11 +63,11 @@ def chat(mensaje):
     if not tool_calls:
         texto = mensaje_modelo.get("content", "")
         memoria.append({"role": "assistant", "content": texto})
-        print(f"\n🤖 Respuesta:\n{texto}\n")
+        print(f"\nRespuesta:\n{texto}\n")
         return texto 
 
     # --- El modelo pidió tools: ejecutarlas ---
-    print(f"   🤖 El modelo quiere usar {len(tool_calls)} herramienta(s)")
+    print(f"   El modelo quiere usar {len(tool_calls)} herramienta(s)")
 
     # Guardamos la respuesta del asistente (con tool_calls)
     memoria.append({

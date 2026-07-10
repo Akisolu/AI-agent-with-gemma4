@@ -1,6 +1,5 @@
 """
 tools.py - Define las herramientas (tools) que el modelo puede usar.
-Cada herramienta es una función Python + su definición en formato JSON Schema.
 """
 
 import os
@@ -9,8 +8,8 @@ import os
 # ========== FUNCIONES DE HERRAMIENTAS ==========
 
 def list_files(directory="."):
-    """Lista los archivos de una carpeta."""
-    print("    Herramienta llamada: list_files")
+    """Lista los archivos y carpetas dentro de un directorio."""
+    print("   🔧 Herramienta llamada: list_files")
     try:
         files = os.listdir(directory)
         return {"files": files, "count": len(files)}
@@ -20,7 +19,7 @@ def list_files(directory="."):
 
 def get_current_time():
     """Obtiene la fecha y hora actual."""
-    print("    Herramienta llamada: get_current_time")
+    print("   🔧 Herramienta llamada: get_current_time")
     from datetime import datetime
     now = datetime.now()
     return {
@@ -30,11 +29,57 @@ def get_current_time():
     }
 
 
+def leer_fichero(fichero):
+    """
+    Lee un fichero de texto plano.
+    
+    Args:
+        fichero: Ruta del archivo a leer (relativa o absoluta)
+    
+    Returns:
+        Contenido del archivo como string, o mensaje de error
+    """
+    print("   🔧 Herramienta llamada: leer_fichero")
+    
+    if not os.path.exists(fichero):
+        return f"Error: El archivo '{fichero}' no existe."
+    
+    if os.path.isdir(fichero):
+        return f"Error: '{fichero}' es una carpeta, no un archivo."
+    
+    extensiones_validas = (".txt", ".py", ".md", ".json", ".csv", ".log", ".yaml", ".yml", ".html", ".css", ".js")
+    if not fichero.lower().endswith(extensiones_validas):
+        return f"Advertencia: '{fichero}' no parece un archivo de texto. Usa con precaución."
+    
+    try:
+        with open(fichero, "r", encoding="utf-8") as archivo:
+            contenido = archivo.read()
+            
+            max_caracteres = 50000
+            if len(contenido) > max_caracteres:
+                return (
+                    f"El archivo es muy grande ({len(contenido)} caracteres). "
+                    f"Mostrando los primeros {max_caracteres} caracteres:\n\n"
+                    f"{contenido[:max_caracteres]}\n\n"
+                    f"[... archivo truncado ...]"
+                )
+            
+            return contenido
+            
+    except UnicodeDecodeError:
+        return f"Error: '{fichero}' no es un archivo de texto válido."
+    except PermissionError:
+        return f"Error: Sin permisos para leer '{fichero}'."
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
+
+
 # ========== MAPEO: nombre de función → función real ==========
 
 AVAILABLE_TOOLS = {
     "list_files": list_files,
     "get_current_time": get_current_time,
+    "leer_fichero": leer_fichero,
 }
 
 
@@ -67,6 +112,23 @@ TOOLS_SCHEMA = [
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "leer_fichero",
+            "description": "Lee el contenido de un archivo de texto plano (txt, py, md, json, etc.).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fichero": {
+                        "type": "string",
+                        "description": "Ruta del archivo a leer. Ejemplos: 'main.py', './chat.py', 'notas.txt'"
+                    }
+                },
+                "required": ["fichero"]
             }
         }
     }

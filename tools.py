@@ -3,31 +3,10 @@ tools.py - Define las herramientas (tools) que el modelo puede usar.
 """
 
 import os
+import shutil
 
 
-# ========== FUNCIONES DE HERRAMIENTAS ==========
-
-def list_files(directory="."):
-    """Lista los archivos y carpetas dentro de un directorio."""
-    print("   Herramienta llamada: list_files")
-    try:
-        files = os.listdir(directory)
-        return {"files": files, "count": len(files)}
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def get_current_time():
-    """Obtiene la fecha y hora actual."""
-    print("   Herramienta llamada: get_current_time")
-    from datetime import datetime
-    now = datetime.now()
-    return {
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M:%S"),
-        "day": now.strftime("%A")
-    }
-
+# ========== FUNCIONES DE HERRAMIENTAS: ARCHIVOS ==========
 
 def leer_fichero(fichero):
     """
@@ -88,15 +67,12 @@ def escribir_fichero(fichero, contenido, modo="sobrescribir"):
     """
     print("   Herramienta llamada: escribir_fichero")
     
-    # Validar modo
     if modo not in ("sobrescribir", "agregar"):
         return f"Error: modo '{modo}' no valido. Usa 'sobrescribir' o 'agregar'."
     
-    # Verificar que no sea una carpeta
     if os.path.isdir(fichero):
         return f"Error: '{fichero}' es una carpeta, no se puede escribir."
     
-    # Crear directorios intermedios si no existen
     directorio = os.path.dirname(fichero)
     if directorio and not os.path.exists(directorio):
         try:
@@ -104,7 +80,6 @@ def escribir_fichero(fichero, contenido, modo="sobrescribir"):
         except Exception as e:
             return f"Error al crear directorios: {str(e)}"
     
-    # Determinar modo de apertura
     modo_archivo = "a" if modo == "agregar" else "w"
     
     try:
@@ -120,6 +95,250 @@ def escribir_fichero(fichero, contenido, modo="sobrescribir"):
         return f"Error inesperado: {str(e)}"
 
 
+def editar_fichero(fichero, texto_viejo, texto_nuevo):
+    """
+    Reemplaza una parte del contenido de un archivo.
+    
+    Args:
+        fichero: Ruta del archivo a editar
+        texto_viejo: Texto a buscar y reemplazar
+        texto_nuevo: Texto nuevo que reemplaza al viejo
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: editar_fichero")
+    
+    if not os.path.exists(fichero):
+        return f"Error: El archivo '{fichero}' no existe."
+    
+    if os.path.isdir(fichero):
+        return f"Error: '{fichero}' es una carpeta, no un archivo."
+    
+    try:
+        with open(fichero, "r", encoding="utf-8") as archivo:
+            contenido = archivo.read()
+        
+        if texto_viejo not in contenido:
+            return f"Error: No se encontro el texto a reemplazar en '{fichero}'."
+        
+        nuevo_contenido = contenido.replace(texto_viejo, texto_nuevo, 1)
+        
+        with open(fichero, "w", encoding="utf-8") as archivo:
+            archivo.write(nuevo_contenido)
+        
+        return f"Exito: Archivo '{fichero}' editado. Reemplazado 1 ocurrencia."
+        
+    except PermissionError:
+        return f"Error: Sin permisos para editar '{fichero}'."
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
+
+
+def mover_fichero(origen, destino):
+    """
+    Mueve un archivo de una ubicacion a otra.
+    
+    Args:
+        origen: Ruta actual del archivo
+        destino: Nueva ruta del archivo
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: mover_fichero")
+    
+    if not os.path.exists(origen):
+        return f"Error: El archivo origen '{origen}' no existe."
+    
+    if os.path.isdir(origen):
+        return f"Error: '{origen}' es una carpeta. Usa mover_carpeta para carpetas."
+    
+    if os.path.exists(destino):
+        return f"Error: Ya existe algo en '{destino}'. Borralo primero o usa otro nombre."
+    
+    directorio = os.path.dirname(destino)
+    if directorio and not os.path.exists(directorio):
+        try:
+            os.makedirs(directorio)
+        except Exception as e:
+            return f"Error al crear directorio destino: {str(e)}"
+    
+    try:
+        shutil.move(origen, destino)
+        return f"Exito: Archivo movido de '{origen}' a '{destino}'."
+    except Exception as e:
+        return f"Error al mover: {str(e)}"
+
+
+def borrar_fichero(fichero):
+    """
+    Elimina un archivo permanentemente.
+    
+    Args:
+        fichero: Ruta del archivo a borrar
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: borrar_fichero")
+    
+    if not os.path.exists(fichero):
+        return f"Error: El archivo '{fichero}' no existe."
+    
+    if os.path.isdir(fichero):
+        return f"Error: '{fichero}' es una carpeta. Usa borrar_carpeta para carpetas."
+    
+    try:
+        os.remove(fichero)
+        return f"Exito: Archivo '{fichero}' eliminado permanentemente."
+    except PermissionError:
+        return f"Error: Sin permisos para borrar '{fichero}'."
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
+
+
+# ========== FUNCIONES DE HERRAMIENTAS: CARPETAS ==========
+
+def crear_carpeta(ruta):
+    """
+    Crea una carpeta y sus subcarpetas si no existen.
+    
+    Args:
+        ruta: Ruta de la carpeta a crear
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: crear_carpeta")
+    
+    if os.path.exists(ruta):
+        if os.path.isdir(ruta):
+            return f"Advertencia: La carpeta '{ruta}' ya existe."
+        else:
+            return f"Error: '{ruta}' ya existe como archivo."
+    
+    try:
+        os.makedirs(ruta)
+        return f"Exito: Carpeta '{ruta}' creada."
+    except Exception as e:
+        return f"Error al crear carpeta: {str(e)}"
+
+
+def renombrar_carpeta(origen, destino):
+    """
+    Cambia el nombre de una carpeta.
+    
+    Args:
+        origen: Nombre o ruta actual de la carpeta
+        destino: Nuevo nombre o ruta de la carpeta
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: renombrar_carpeta")
+    
+    if not os.path.exists(origen):
+        return f"Error: La carpeta '{origen}' no existe."
+    
+    if not os.path.isdir(origen):
+        return f"Error: '{origen}' no es una carpeta."
+    
+    if os.path.exists(destino):
+        return f"Error: Ya existe '{destino}'. Usa otro nombre."
+    
+    try:
+        os.rename(origen, destino)
+        return f"Exito: Carpeta renombrada de '{origen}' a '{destino}'."
+    except Exception as e:
+        return f"Error al renombrar: {str(e)}"
+
+
+def mover_carpeta(origen, destino):
+    """
+    Mueve una carpeta a otra ubicacion.
+    
+    Args:
+        origen: Ruta actual de la carpeta
+        destino: Nueva ruta de la carpeta
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: mover_carpeta")
+    
+    if not os.path.exists(origen):
+        return f"Error: La carpeta '{origen}' no existe."
+    
+    if not os.path.isdir(origen):
+        return f"Error: '{origen}' no es una carpeta."
+    
+    if os.path.exists(destino):
+        return f"Error: Ya existe '{destino}'. Borralo primero o usa otro nombre."
+    
+    try:
+        shutil.move(origen, destino)
+        return f"Exito: Carpeta movida de '{origen}' a '{destino}'."
+    except Exception as e:
+        return f"Error al mover carpeta: {str(e)}"
+
+
+def borrar_carpeta(ruta, forzar=False):
+    """
+    Elimina una carpeta y todo su contenido.
+    
+    Args:
+        ruta: Ruta de la carpeta a borrar
+        forzar: Si es True, borra aunque no este vacia. Default False.
+    
+    Returns:
+        Mensaje de confirmacion o error
+    """
+    print("   Herramienta llamada: borrar_carpeta")
+    
+    if not os.path.exists(ruta):
+        return f"Error: La carpeta '{ruta}' no existe."
+    
+    if not os.path.isdir(ruta):
+        return f"Error: '{ruta}' no es una carpeta."
+    
+    try:
+        if forzar:
+            shutil.rmtree(ruta)
+            return f"Exito: Carpeta '{ruta}' y todo su contenido eliminados."
+        else:
+            os.rmdir(ruta)
+            return f"Exito: Carpeta vacia '{ruta}' eliminada."
+    except OSError:
+        return f"Error: La carpeta '{ruta}' no esta vacia. Usa forzar=True para borrar todo."
+    except Exception as e:
+        return f"Error inesperado: {str(e)}"
+
+
+# ========== FUNCIONES EXISTENTES ==========
+
+def list_files(directory="."):
+    """Lista los archivos y carpetas dentro de un directorio."""
+    print("   Herramienta llamada: list_files")
+    try:
+        files = os.listdir(directory)
+        return {"files": files, "count": len(files)}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_current_time():
+    """Obtiene la fecha y hora actual."""
+    print("   Herramienta llamada: get_current_time")
+    from datetime import datetime
+    now = datetime.now()
+    return {
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%H:%M:%S"),
+        "day": now.strftime("%A")
+    }
+
+
 # ========== MAPEO: nombre de funcion → funcion real ==========
 
 AVAILABLE_TOOLS = {
@@ -127,6 +346,13 @@ AVAILABLE_TOOLS = {
     "get_current_time": get_current_time,
     "leer_fichero": leer_fichero,
     "escribir_fichero": escribir_fichero,
+    "editar_fichero": editar_fichero,
+    "mover_fichero": mover_fichero,
+    "borrar_fichero": borrar_fichero,
+    "crear_carpeta": crear_carpeta,
+    "renombrar_carpeta": renombrar_carpeta,
+    "mover_carpeta": mover_carpeta,
+    "borrar_carpeta": borrar_carpeta,
 }
 
 
@@ -183,25 +409,168 @@ TOOLS_SCHEMA = [
         "type": "function",
         "function": {
             "name": "escribir_fichero",
-            "description": "Escribe o agrega texto a un archivo de texto plano. Crea el archivo y directorios si no existen.",
+            "description": "Crea o sobrescribe un archivo de texto plano. Crea directorios si no existen.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "fichero": {
                         "type": "string",
-                        "description": "Ruta del archivo a crear o modificar. Ejemplos: 'notas.txt', './docs/resumen.md'"
+                        "description": "Ruta del archivo. Ejemplos: 'notas.txt', './docs/resumen.md'"
                     },
                     "contenido": {
                         "type": "string",
-                        "description": "Texto que se escribira en el archivo."
+                        "description": "Texto a escribir en el archivo."
                     },
                     "modo": {
                         "type": "string",
                         "enum": ["sobrescribir", "agregar"],
-                        "description": "'sobrescribir' reemplaza el contenido existente. 'agregar' anade al final."
+                        "description": "'sobrescribir' reemplaza todo. 'agregar' anade al final."
                     }
                 },
                 "required": ["fichero", "contenido"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "editar_fichero",
+            "description": "Reemplaza una parte especifica del texto dentro de un archivo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fichero": {
+                        "type": "string",
+                        "description": "Ruta del archivo a editar."
+                    },
+                    "texto_viejo": {
+                        "type": "string",
+                        "description": "Texto exacto a buscar y reemplazar."
+                    },
+                    "texto_nuevo": {
+                        "type": "string",
+                        "description": "Texto nuevo que reemplaza al viejo."
+                    }
+                },
+                "required": ["fichero", "texto_viejo", "texto_nuevo"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mover_fichero",
+            "description": "Mueve un archivo a otra ubicacion o cambia su nombre.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origen": {
+                        "type": "string",
+                        "description": "Ruta actual del archivo."
+                    },
+                    "destino": {
+                        "type": "string",
+                        "description": "Nueva ruta o nombre del archivo."
+                    }
+                },
+                "required": ["origen", "destino"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "borrar_fichero",
+            "description": "Elimina permanentemente un archivo. No se puede deshacer.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fichero": {
+                        "type": "string",
+                        "description": "Ruta del archivo a eliminar."
+                    }
+                },
+                "required": ["fichero"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crear_carpeta",
+            "description": "Crea una carpeta nueva y sus subcarpetas si no existen.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ruta": {
+                        "type": "string",
+                        "description": "Ruta de la carpeta a crear. Ejemplos: 'proyecto', './docs/imagenes'"
+                    }
+                },
+                "required": ["ruta"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "renombrar_carpeta",
+            "description": "Cambia el nombre de una carpeta existente.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origen": {
+                        "type": "string",
+                        "description": "Nombre o ruta actual de la carpeta."
+                    },
+                    "destino": {
+                        "type": "string",
+                        "description": "Nuevo nombre o ruta de la carpeta."
+                    }
+                },
+                "required": ["origen", "destino"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mover_carpeta",
+            "description": "Mueve una carpeta completa a otra ubicacion.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origen": {
+                        "type": "string",
+                        "description": "Ruta actual de la carpeta."
+                    },
+                    "destino": {
+                        "type": "string",
+                        "description": "Nueva ruta de la carpeta."
+                    }
+                },
+                "required": ["origen", "destino"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "borrar_carpeta",
+            "description": "Elimina una carpeta. Si no esta vacia, requiere forzar=True.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ruta": {
+                        "type": "string",
+                        "description": "Ruta de la carpeta a eliminar."
+                    },
+                    "forzar": {
+                        "type": "boolean",
+                        "description": "Si es True, borra la carpeta y todo su contenido. Default False."
+                    }
+                },
+                "required": ["ruta"]
             }
         }
     }

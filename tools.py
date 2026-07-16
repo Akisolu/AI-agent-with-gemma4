@@ -338,6 +338,49 @@ def get_current_time():
         "day": now.strftime("%A")
     }
 
+import requests
+from time import sleep
+
+def _api_dolar_bcv():
+    # El API oficial de DolarApi para el dólar BCV
+    url = "https://ve.dolarapi.com/v1/dolares/oficial"
+    try:
+        # Añadimos un timeout para que no se quede colgado esperando eternamente
+        consulta = requests.get(url, timeout=5)
+        if consulta.status_code == 200:
+            return consulta.json()
+    except requests.RequestException:
+        # Si hay un error de red o timeout, atrapamos el error aquí
+        pass
+    return None
+
+def consultar_dolar_bcv():
+    # Sistema de reintentos
+    tries = 0
+    result = None
+
+    while tries <= 3:
+        if tries > 0:
+            # Espera progresiva antes de reintentar (0.5s, 1.0s, 1.5s)
+            tiempo_espera = tries * 0.5
+            print(f"Reintentando en {tiempo_espera} segundos...")
+            sleep(tiempo_espera)
+
+        result = _api_dolar_bcv()
+
+        # Si conseguimos los datos con éxito, rompemos el bucle
+        if result is not None:
+            break
+
+        # Incrementamos, falle por red o falle por respuesta del servidor
+        tries += 1
+
+    if result:
+        return (f"Tasa BCV: {result.get('promedio')} Bs.")
+    else:
+        return "No se pudo obtener la tasa después de 3 intentos."
+
+
 
 # ========== MAPEO: nombre de funcion → funcion real ==========
 
@@ -353,6 +396,7 @@ AVAILABLE_TOOLS = {
     "renombrar_carpeta": renombrar_carpeta,
     "mover_carpeta": mover_carpeta,
     "borrar_carpeta": borrar_carpeta,
+    "consultar_dolar_bcv": consultar_dolar_bcv,
 }
 
 
@@ -573,5 +617,17 @@ TOOLS_SCHEMA = [
                 "required": ["ruta"]
             }
         }
+    },
+    {
+    "type": "function", 
+    "function": {
+        "name": "consultar_dolar_bcv", 
+        "description": "Una funcion que permite consultar el precio de cambio del USD a BS (Bolivar venezolano) usando la tasa oficial del BCV",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    }
     }
 ]

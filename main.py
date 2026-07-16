@@ -3,7 +3,7 @@ main.py - Interfaz de usuario por consola.
 """
 
 from chat import chat, guardar_sesion, cargar_sesion
-from memory import listar_memorias, ver_memoria, borrar_memoria
+#from memory import listar_memorias, ver_memoria, borrar_memoria
 import os
 
 

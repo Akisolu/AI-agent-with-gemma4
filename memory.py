@@ -1,223 +1,131 @@
-"""
-memory.py - Cristaliza (guarda) la memoria del agente en archivos JSON.
-"""
-
-import json
 import os
-from datetime import datetime
+import json
+from collections import deque
+from typing import List, Dict, Optional, Any
+
+# Carpeta predeterminada para guardar las memorias
+CARPETA_MEMORIAS = "memorias"
+
+def asegurar_carpeta_destino():
+    """Asegura que exista la carpeta para guardar las memorias."""
+    if not os.path.exists(CARPETA_MEMORIAS):
+        os.makedirs(CARPETA_MEMORIAS)
 
 
-# Carpeta donde se guardan las memorias
-MEMORIA_DIR = "memoria"
-
-
-def _asegurar_carpeta():
-    """Crea la carpeta de memorias si no existe."""
-    if not os.path.exists(MEMORIA_DIR):
-        os.makedirs(MEMORIA_DIR)
-
-
-def _generar_nombre_archivo():
-    """Genera un nombre unico basado en fecha y hora."""
-    ahora = datetime.now()
-    return f"sesion_{ahora.strftime('%Y-%m-%d_%H-%M-%S')}.json"
-
-
-def _limpiar_memoria(memoria):
+class MemoriaCorta:
     """
-    Convierte la memoria a formato JSON-serializable.
-    Los ToolCall de Ollama se convierten a diccionarios simples.
+    Gestiona la memoria a corto plazo (búfer rotativo de mensajes).
     """
-    memoria_limpia = []
-    
-    for msg in memoria:
-        msg_limpio = {
-            "role": msg.get("role", "unknown"),
-            "content": msg.get("content", "")
+    def __init__(self, max_msg: int = 20):
+        # max_msg: número de mensajes a retener.
+        # Al excederse, deque elimina automáticamente el elemento más antiguo.
+        self.memory: deque = deque(maxlen=max_msg)
+
+    def agregar_mensaje(self, role: str, content: str, tool_calls: Optional[List] = None, name: Optional[str] = None) -> Optional[Dict]:
+        """
+        Añade un mensaje. Si la memoria está llena, devuelve el mensaje
+        que ha sido expulsado para que la Memoria a Medio Plazo pueda procesarlo.
+        """
+        expulsado = None
+        if len(self.memory) == self.memory.maxlen:
+            expulsado = self.memory[0]  # El elemento más antiguo que va a salir
+
+        nuevo_msg = {"role": role, "content": content}
+        if tool_calls is not None:
+            nuevo_msg["tool_calls"] = tool_calls
+        if name is not None:
+            nuevo_msg["name"] = name
+
+        self.memory.append(nuevo_msg)
+        return expulsado
+
+    def obtener_mensajes(self) -> List[Dict]:
+        return list(self.memory)
+
+    def vaciar(self):
+        self.memory.clear()
+
+
+class MemoriaMedioPlazo:
+    """
+    Gestiona resúmenes episódicos y hechos clave (cuaderno de notas activas).
+    """
+    def __init__(self):
+        self.resumenes_episodicos: List[str] = []
+        self.hechos_clave: Dict[str, Any] = {
+            "temas_activos": [],
+            "preferencias_usuario": {},
+            "metas_actuales": []
         }
+
+    def agregar_resumen(self, resumen: str):
+        if resumen and resumen not in self.resumenes_episodicos:
+            self.resumenes_episodicos.append(resumen)
+
+    def actualizar_hecho(self, categoria: str, clave: str, valor: Any):
+        if categoria in self.hechos_clave:
+            if isinstance(self.hechos_clave[categoria], dict):
+                self.hechos_clave[categoria][clave] = valor
+            elif isinstance(self.hechos_clave[categoria], list):
+                if valor not in self.hechos_clave[categoria]:
+                    self.hechos_clave[categoria].append(valor)
+
+    def generar_prompt_contexto(self) -> str:
+        """Genera el bloque que se inyectará dinámicamente en el sistema."""
+        contexto = []
+        if self.resumenes_episodicos:
+            contexto.append("### Lo que hemos hablado recientemente (Resumen):")
+            for res in self.resumenes_episodicos[-3:]:  # Limitamos a los últimos 3 resúmenes
+                contexto.append(f"- {res}")
         
-        # Convertir tool_calls si existen
-        tool_calls_raw = msg.get("tool_calls")
-        if tool_calls_raw:
-            tool_calls_limpios = []
-            for tc in tool_calls_raw:
-                # Si es un objeto ToolCall de Ollama, convertirlo
-                if hasattr(tc, "function"):
-                    tool_calls_limpios.append({
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments
-                        }
-                    })
-                # Si ya es un diccionario, usarlo directamente
-                elif isinstance(tc, dict):
-                    tool_calls_limpios.append(tc)
-            
-            if tool_calls_limpios:
-                msg_limpio["tool_calls"] = tool_calls_limpios
+        preferencias = self.hechos_clave.get("preferencias_usuario", {})
+        temas = self.hechos_clave.get("temas_activos", [])
         
-        # Incluir otros campos si existen
-        if "name" in msg:
-            msg_limpio["name"] = msg["name"]
-        
-        memoria_limpia.append(msg_limpio)
-    
-    return memoria_limpia
+        if preferencias or temas:
+            contexto.append("\n### Notas sobre el usuario y el proyecto:")
+            if temas:
+                contexto.append(f"- Temas de interés activos: {', '.join(temas)}")
+            for k, v in preferencias.items():
+                contexto.append(f"- {k}: {v}")
+                
+        return "\n".join(contexto)
 
 
-def cristalizar(memoria, nombre=None, metadata=None):
-    """
-    Guarda la memoria del agente en un archivo JSON.
-    
-    Args:
-        memoria: Lista de mensajes (la memoria del chat)
-        nombre: Nombre personalizado del archivo (opcional)
-        metadata: Dict con info extra (opcional)
-    
-    Returns:
-        Ruta del archivo guardado
-    """
-    _asegurar_carpeta()
-    
-    nombre_archivo = nombre or _generar_nombre_archivo()
+# --- Funciones de Cristalización y Carga Requeridas ---
+
+def cristalizar(memoria_corta: MemoriaCorta, memoria_medio: MemoriaMedioPlazo, nombre: Optional[str] = None) -> str:
+    """Guarda ambas memorias en un único archivo JSON en la carpeta predeterminada."""
+    asegurar_carpeta_destino()
+    nombre_archivo = nombre or "sesion_agente.json"
     if not nombre_archivo.endswith(".json"):
         nombre_archivo += ".json"
+        
+    ruta_completa = os.path.join(CARPETA_MEMORIAS, nombre_archivo)
     
-    ruta = os.path.join(MEMORIA_DIR, nombre_archivo)
-    
-    # Limpiar la memoria antes de guardar
-    memoria_limpia = _limpiar_memoria(memoria)
-    
-    # Preparar el contenido a guardar
     datos = {
-        "timestamp": datetime.now().isoformat(),
-        "total_mensajes": len(memoria_limpia),
-        "metadata": metadata or {},
-        "memoria": memoria_limpia
+        "max_msg": memoria_corta.memory.maxlen,
+        "memoria_corta": memoria_corta.obtener_mensajes(),
+        "memoria_medio": {
+            "resumenes": memoria_medio.resumenes_episodicos,
+            "hechos": list(memoria_medio.hechos_clave.items())
+        }
     }
     
-    with open(ruta, "w", encoding="utf-8") as f:
-        json.dump(datos, f, ensure_ascii=False, indent=2)
-    
-    print(f"Memoria cristalizada en: {ruta}")
-    return ruta
+    with open(ruta_completa, "w", encoding="utf-8") as f:
+        json.dump(datos, f, ensure_ascii=False, indent=4)
+        
+    return ruta_completa
 
-
-def cargar_memoria(nombre_archivo):
-    """
-    Carga una memoria guardada desde un archivo JSON.
-    
-    Args:
-        nombre_archivo: Nombre del archivo (con o sin .json)
-    
-    Returns:
-        Lista de mensajes (memoria), o None si no existe
-    """
+def cargar_memoria(nombre_archivo: str) -> Optional[Dict[str, Any]]:
+    """Carga los datos guardados desde la carpeta predeterminada."""
     if not nombre_archivo.endswith(".json"):
         nombre_archivo += ".json"
+        
+    ruta_completa = os.path.join(CARPETA_MEMORIAS, nombre_archivo)
     
-    ruta = os.path.join(MEMORIA_DIR, nombre_archivo)
-    
-    if not os.path.exists(ruta):
-        print(f"No se encontro: {ruta}")
+    if not os.path.exists(ruta_completa):
+        print(f"⚠️ Archivo no encontrado en: {ruta_completa}")
         return None
-    
-    with open(ruta, "r", encoding="utf-8") as f:
-        datos = json.load(f)
-    
-    print(f"Memoria cargada desde: {ruta}")
-    print(f"   Fecha original: {datos.get('timestamp', 'desconocida')}")
-    print(f"   Mensajes: {datos.get('total_mensajes', 0)}")
-    
-    return datos["memoria"]
-
-
-def listar_memorias():
-    """Muestra todas las memorias guardadas."""
-    _asegurar_carpeta()
-    
-    archivos = [f for f in os.listdir(MEMORIA_DIR) if f.endswith(".json")]
-    
-    if not archivos:
-        print("No hay memorias guardadas.")
-        return []
-    
-    print(f"Memorias guardadas ({len(archivos)}):")
-    for i, archivo in enumerate(sorted(archivos), 1):
-        ruta = os.path.join(MEMORIA_DIR, archivo)
-        with open(ruta, "r", encoding="utf-8") as f:
-            datos = json.load(f)
         
-        fecha = datos.get("timestamp", "desconocida")[:19].replace("T", " ")
-        mensajes = datos.get("total_mensajes", 0)
-        meta = datos.get("metadata", {})
-        meta_str = f" | {meta}" if meta else ""
-        
-        print(f"   {i}. {archivo} ({mensajes} msgs, {fecha}){meta_str}")
-    
-    return archivos
-
-
-def ver_memoria(nombre_archivo):
-    """
-    Muestra el contenido de una memoria de forma legible.
-    
-    Args:
-        nombre_archivo: Nombre del archivo a visualizar
-    """
-    if not nombre_archivo.endswith(".json"):
-        nombre_archivo += ".json"
-    
-    ruta = os.path.join(MEMORIA_DIR, nombre_archivo)
-    
-    if not os.path.exists(ruta):
-        print(f"No se encontro: {ruta}")
-        return
-    
-    with open(ruta, "r", encoding="utf-8") as f:
-        datos = json.load(f)
-    
-    print("=" * 60)
-    print(f"MEMORIA: {nombre_archivo}")
-    print(f"Guardada: {datos.get('timestamp', 'desconocida')}")
-    print(f"Total mensajes: {datos.get('total_mensajes', 0)}")
-    
-    meta = datos.get("metadata", {})
-    if meta:
-        print(f"Metadata: {meta}")
-    
-    print("=" * 60)
-    
-    for i, msg in enumerate(datos["memoria"], 1):
-        rol = msg.get("role", "desconocido")
-        contenido = msg.get("content", "")
-        
-        # Truncar contenido muy largo para visualizacion
-        if len(contenido) > 200:
-            contenido = contenido[:200] + " [...]"
-        
-        print(f"\n[{i}] {rol.upper()}")
-        print(f"    {contenido}")
-        
-        # Mostrar tool_calls si existen
-        if "tool_calls" in msg:
-            for tc in msg["tool_calls"]:
-                nombre_func = tc.get("function", {}).get("name", "unknown")
-                args = tc.get("function", {}).get("arguments", {})
-                print(f"    Tool: {nombre_func}({args})")
-    
-    print("\n" + "=" * 60)
-
-
-def borrar_memoria(nombre_archivo):
-    """Elimina un archivo de memoria."""
-    if not nombre_archivo.endswith(".json"):
-        nombre_archivo += ".json"
-    
-    ruta = os.path.join(MEMORIA_DIR, nombre_archivo)
-    
-    if os.path.exists(ruta):
-        os.remove(ruta)
-        print(f"Memoria borrada: {nombre_archivo}")
-    else:
-        print(f"No existe: {nombre_archivo}")
+    with open(ruta_completa, "r", encoding="utf-8") as f:
+        return json.load(f)

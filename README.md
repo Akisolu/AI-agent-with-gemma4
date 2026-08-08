@@ -1,61 +1,63 @@
-# 🤖 Agente de IA Local con Gemma 4 (Function Calling & Persistencia)
+# 🤖 Local AI Agent with Gemma 4 (Function Calling & Persistence)
 
-Un agente de inteligencia artificial interactivo desarrollado en Python que se ejecuta **100% en local** utilizando **Ollama** y el modelo **Gemma4:e2b**. 
+*🇪🇸 [Leer en español](README.es.md)*
 
-El sistema implementa de forma nativa la capacidad de **Tool Use / Function Calling** mediante esquemas JSON, gestión de **memoria persistente** a corto y mediano plazo, y un sistema automatizado de temporizadores (*timers*) para la ejecución diferida de herramientas.
+An interactive artificial intelligence agent developed in Python that runs **100% locally** using **Ollama** and the **Gemma4:e2b** model.
 
----
-
-## ✨ Características Principales
-
-* **🔒 Ejecución 100% Local & Privada:** Desarrollado sobre la API local de **Ollama** (compatible con `gemma4:e2b`).
-* **🛠️ Function Calling / Tool Use Dinámico:**
-  * **Sistema de Archivos:** Lectura, escritura, creación, eliminación y listado modular de archivos y carpetas.
-  * **Integración Web / APIs:** Consulta en tiempo real del precio del dólar oficial (BCV) mediante consumo de API externa.
-  * **Sistema de Temporizadores:** Creación de *timers* asíncronos en segundo plano (`timer.py`) para ejecutar avisos o tareas tras un intervalo de tiempo.
-* **🧠 Memoria Persistente:**
-  * **Memoria a Corto Plazo:** Mantenimiento del contexto de la conversación actual.
-  * **Memoria a Mediano Plazo:** Almacenamiento persistente de datos clave para recordar información importante entre distintas sesiones.
-* **⚡ Medición de Latencia y Rendimiento:** Monitoreo en tiempo real del tiempo de respuesta del modelo por cada interacción.
+The system natively implements **Tool Use / Function Calling** via JSON schemas, manages **persistent short- and mid-term memory**, and includes an automated timers system for deferred tool execution.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## ✨ Key Features
 
-* **Lenguaje:** Python 3.14
-* **Motor LLM:** Ollama (`ollama-python`)
-* **Peticiones HTTP:** `requests`
-* **Formato de Esquemas:** JSON Schema para definición e invocación de herramientas.
+* **🔒 100% Local & Private Execution:** Built on the local **Ollama** API (compatible with `gemma4:e2b`).
+* **🛠️ Dynamic Function Calling / Tool Use:**
+  * **File System:** Modular reading, writing, creation, deletion, and listing of files and folders.
+  * **Web / API Integration:** Real-time lookup of the official dollar price (BCV) via an external API.
+  * **Timers System:** Creation of asynchronous background timers (`timer.py`) to trigger notifications or tasks after a time interval.
+* **🧠 Persistent Memory:**
+  * **Short-Term Memory:** Maintains the context of the current conversation.
+  * **Mid-Term Memory:** Persistent storage of key data to remember important information across sessions.
+* **⚡ Latency and Performance Measurement:** Real-time monitoring of model response times per interaction.
 
 ---
 
-## 📂 Arquitectura y Estructura del Código
+## 🛠️ Technologies Used
+
+* **Language:** Python 3.14
+* **LLM Engine:** Ollama (`ollama-python`)
+* **HTTP Requests:** `requests`
+* **Schema Format:** JSON Schema for tool definition and invocation.
+
+---
+
+## 📂 Architecture and Code Structure
 
 ```text
-├── main.py              # Bucle principal de interacción (REPL) y medición de rendimiento
-├── chat.py              # Motor del chat, parsing de Function Calling y despacho de herramientas
-├── memory.py            # Gestor de ventana de contexto para memoria a corto/mediano plazo
-├── tools.py             # Implementación nativa de funciones (Archivos, API Dólar, Timers)
-├── timer.py             # Ejecución asíncrona de temporizadores en hilos secundarios
-├── tools_esquema.json   # Definición formal en JSON Schema de las herramientas disponibles
-└── dependencias.txt     # Dependencias del proyecto
+├── main.py              # Main interaction loop (REPL) and performance measurement
+├── chat.py              # Chat engine, Function Calling parsing and tool dispatch
+├── memory.py            # Context window manager for short/mid-term memory
+├── tools.py             # Native function implementations (Files, Dollar API, Timers)
+├── timer.py             # Asynchronous execution of timers in background threads
+├── tools_esquema.json   # Formal JSON Schema definitions for available tools
+└── dependencias.txt     # Project dependencies
 ```
 
-## 🚀 Guía de Instalación y Uso
-### Prerrequisitos
-* Tener [Ollama](https://ollama.com/) instalado y ejecutándose en tu sistema.
-* Descargar el modelo deseado (por ejemplo `gemma4:e2b`):
+## 🚀 Installation and Usage Guide
+### Prerequisites
+* Have [Ollama](https://ollama.com/) installed and running on your system.
+* Download the desired model (for example, `gemma4:e2b`):
 > [!NOTE]  
-> **Sobre los modelos:**  
-> En este proyecto se uso `gemma4:e2b`, sin embargo cualquier modelo de ollama con la capacidad de usar `tools` deberia funcionar, solo necesitaria ir a `chat.py` linea `51` y cambiar manualmente el nombre del modelo
+> **About models:**  
+> This project used `gemma4:e2b`, however any Ollama model with tool-use capability should work; you may need to edit `chat.py` at line `51` and change the model name manually.
 
-### Pasos de Instalación
-1. Clonar el repositorio:
+### Installation Steps
+1. Clone the repository:
 ```bash
     git clone https://github.com/Aki-new/agente-de-IA-con-gemma4.git
     cd agente-de-IA-con-gemma4
 ```
-2. Crear y activar el entorno virtual:
+2. Create and activate a virtual environment:
    
    * Windows:
      ```bash
@@ -67,17 +69,17 @@ El sistema implementa de forma nativa la capacidad de **Tool Use / Function Call
         python3 -m venv .venv
         source .venv/bin/activate
      ```
-3. Instalar dependencias:
+3. Install dependencies:
 ```bash
     pip install -r dependencias.txt
 ```
-4. Ejecutar el agente
+4. Run the agent
 ```bash
     python main.py
 ```
 
-## 📝 Comandos Especiales del Agente
-Durante la conversación interactiva puedes usar los siguientes comandos en la terminal:
-* `salir` / `exit`: Finaliza la sesión actual.
-* `limpiar memoria`: Borra el historial de la sesión actual de la base de datos.
-* `memoria`: Muestra los mensajes almacenados actualmente en el contexto.
+## 📝 Special Agent Commands
+During the interactive conversation you can use the following commands in the terminal:
+* `salir` / `exit`: End the current session.
+* `limpiar memoria`: Clear the current session history from the database.
+* `memoria`: Show the messages currently stored in the context.

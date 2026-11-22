@@ -1,5 +1,13 @@
 # 🤖 Local AI Agent with Gemma 4 (Function Calling & Persistence)
 
+**What it does:** A chat agent that runs entirely on your own computer, with no cloud AI. It manages files, checks the dollar price online, sets reminders and remembers you between sessions.  
+**Why it matters:** Cloud AI means sending your data elsewhere and paying per use; here everything stays local and private.
+
+**Qué hace:** Un agente de chat que funciona completamente en tu computadora, sin IA en la nube. Gestiona archivos, consulta el precio del dólar, crea recordatorios y te recuerda entre sesiones.  
+**Por qué importa:** La IA en la nube implica enviar tus datos a terceros y pagar por uso; aquí todo queda en local y privado.
+
+> 📄 Versión completa en español: [README.es.md](README.es.md)
+
 *🇪🇸 [Leer en español](README.es.md)*
 
 An interactive artificial intelligence agent developed in Python that runs **100% locally** using **Ollama** and the **Gemma4:e2b** model.
@@ -54,8 +62,8 @@ The system natively implements **Tool Use / Function Calling** via JSON schemas,
 ### Installation Steps
 1. Clone the repository:
 ```bash
-    git clone https://github.com/Aki-new/agente-de-IA-con-gemma4.git
-    cd agente-de-IA-con-gemma4
+    git clone https://github.com/Akisolu/AI-agent-with-gemma4.git
+    cd AI-agent-with-gemma4
 ```
 2. Create and activate a virtual environment:
    

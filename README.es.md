@@ -2,6 +2,9 @@
 
 *🇺🇸 [Read this in English](README.md)*
 
+**Qué hace:** Un agente de chat que funciona completamente en tu computadora, sin IA en la nube. Gestiona archivos, consulta el precio del dólar, crea recordatorios y te recuerda entre sesiones.  
+**Por qué importa:** La IA en la nube implica enviar tus datos a terceros y pagar por uso; aquí todo queda en local y privado.
+
 Un agente de inteligencia artificial interactivo desarrollado en Python que se ejecuta **100% en local** utilizando **Ollama** y el modelo **Gemma4:e2b**. 
 
 El sistema implementa de forma nativa la capacidad de **Tool Use / Function Calling** mediante esquemas JSON, gestión de **memoria persistente** a corto y mediano plazo, y un sistema automatizado de temporizadores (*timers*) para la ejecución diferida de herramientas.
@@ -54,8 +57,8 @@ El sistema implementa de forma nativa la capacidad de **Tool Use / Function Call
 ### Pasos de Instalación
 1. Clonar el repositorio:
 ```bash
-    git clone https://github.com/Aki-new/agente-de-IA-con-gemma4.git
-    cd agente-de-IA-con-gemma4
+    git clone https://github.com/Akisolu/AI-agent-with-gemma4.git
+    cd AI-agent-with-gemma4
 ```
 2. Crear y activar el entorno virtual:
    
